@@ -53,9 +53,10 @@ class SagGroup(click.Group):
 @click.option("-o", "--output", default=None, type=click.Path(), help="Save audio to file instead of playing.")
 @click.option("--format", "fmt", default=None, type=click.Choice(["wav", "mp3"]), help="Output format (auto-detected from extension if omitted).")
 @click.option("--model", default=None, help="KittenTTS model ID (default from config).")
+@click.option("--no-server", is_flag=True, help="Skip background server, load model in-process.")
 @click.version_option(__version__, prog_name="sag")
 @click.pass_context
-def main(ctx, voice, speed, rate, output, fmt, model):
+def main(ctx, voice, speed, rate, output, fmt, model, no_server):
     """Neural text-to-speech from the command line.
 
     Usage: sag "Hello world"
@@ -70,6 +71,7 @@ def main(ctx, voice, speed, rate, output, fmt, model):
 
     ctx.obj["model"] = model
     ctx.obj["voice"] = voice
+    ctx.obj["no_server"] = no_server
 
     if ctx.invoked_subcommand is not None:
         return
@@ -91,12 +93,22 @@ def main(ctx, voice, speed, rate, output, fmt, model):
         else:
             speed = 1.0
 
-    from sag.voices import validate_voice
-    from sag.tts import generate
     from sag.audio import play, save_to_file
 
-    validate_voice(voice, model)
-    samples, sample_rate = generate(text_str, voice, speed, model)
+    # Try background server first, fall back to direct generation
+    result = None
+    if not no_server:
+        from sag.client import try_generate
+        result = try_generate(text_str, voice, speed, model)
+
+    if result is None:
+        from sag.voices import validate_voice
+        from sag.tts import generate
+
+        validate_voice(voice, model)
+        result = generate(text_str, voice, speed, model)
+
+    samples, sample_rate = result
 
     if output:
         save_to_file(samples, sample_rate, output, fmt)
@@ -149,3 +161,12 @@ def models(ctx, select):
     else:
         click.echo("Invalid selection.", err=True)
         raise SystemExit(1)
+
+
+@main.command(hidden=True)
+@click.option("--idle-timeout", default=60, type=int, help="Seconds to wait before auto-exit.")
+def serve(idle_timeout):
+    """Run the background model server (internal use)."""
+    from sag.server import run_server
+
+    run_server(idle_timeout=idle_timeout)

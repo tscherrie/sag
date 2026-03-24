@@ -15,6 +15,43 @@ def play(samples: np.ndarray, sample_rate: int) -> None:
     sd.wait()
 
 
+def play_streaming(audio_iter, sample_rate: int = 24000) -> None:
+    """Play audio chunks with look-ahead generation.
+
+    A background thread generates chunks into a queue so the next chunk
+    is ready by the time the current one finishes playing. This eliminates
+    the pause between chunks.
+
+    Args:
+        audio_iter: Iterator yielding np.ndarray chunks of float32 PCM.
+        sample_rate: Sample rate (default 24000 for KittenTTS).
+    """
+    import queue
+    import threading
+
+    import sounddevice as sd
+
+    _SENTINEL = None
+    buf: queue.Queue[np.ndarray | None] = queue.Queue(maxsize=2)
+
+    def _producer():
+        try:
+            for chunk in audio_iter:
+                buf.put(chunk)
+        finally:
+            buf.put(_SENTINEL)
+
+    thread = threading.Thread(target=_producer, daemon=True)
+    thread.start()
+
+    while True:
+        chunk = buf.get()
+        if chunk is None:
+            break
+        sd.play(chunk, samplerate=sample_rate)
+        sd.wait()
+
+
 def save_to_file(
     samples: np.ndarray, sample_rate: int, path: str, fmt: str | None = None
 ) -> None:

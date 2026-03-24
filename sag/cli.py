@@ -93,27 +93,52 @@ def main(ctx, voice, speed, rate, output, fmt, model, no_server):
         else:
             speed = 1.0
 
-    from sag.audio import play, save_to_file
+    from sag.text_input import chunk_text
 
-    # Try background server first, fall back to direct generation
-    result = None
-    if not no_server:
-        from sag.client import try_generate
-        result = try_generate(text_str, voice, speed, model)
+    chunks = chunk_text(text_str)
 
-    if result is None:
-        from sag.voices import validate_voice
-        from sag.tts import generate
+    def generate_one(chunk_text_str):
+        """Generate audio for a single chunk, server-first with fallback."""
+        result = None
+        if not no_server:
+            from sag.client import try_generate
+            result = try_generate(chunk_text_str, voice, speed, model)
+        if result is None:
+            from sag.voices import validate_voice
+            from sag.tts import generate
 
-        validate_voice(voice, model)
-        result = generate(text_str, voice, speed, model)
-
-    samples, sample_rate = result
+            validate_voice(voice, model)
+            result = generate(chunk_text_str, voice, speed, model)
+        return result
 
     if output:
-        save_to_file(samples, sample_rate, output, fmt)
+        # File output: generate all chunks, concatenate, save once
+        from sag.audio import save_to_file
+
+        all_samples = []
+        sample_rate = 24000
+        for chunk in chunks:
+            samples, sample_rate = generate_one(chunk)
+            all_samples.append(samples)
+
+        import numpy as np
+        combined = np.concatenate(all_samples)
+        save_to_file(combined, sample_rate, output, fmt)
     else:
-        play(samples, sample_rate)
+        # Streaming playback: generate and play chunks as they arrive
+        if len(chunks) == 1:
+            from sag.audio import play
+            samples, sample_rate = generate_one(chunks[0])
+            play(samples, sample_rate)
+        else:
+            from sag.audio import play_streaming
+
+            def _audio_chunks():
+                for chunk in chunks:
+                    samples, _sr = generate_one(chunk)
+                    yield samples
+
+            play_streaming(_audio_chunks())
 
 
 @main.command()

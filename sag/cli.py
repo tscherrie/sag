@@ -5,7 +5,7 @@ import click
 from sag import __version__
 from sag.config import AVAILABLE_MODELS, get_default, set_default
 
-DEFAULT_MODEL = "KittenML/kitten-tts-nano-0.8"
+DEFAULT_MODEL = "KittenML/kitten-tts-nano-0.8-int8"
 DEFAULT_VOICE = "Bella"
 DEFAULT_RATE = 175  # words per minute baseline
 

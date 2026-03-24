@@ -61,11 +61,13 @@ sag voices --select
 
 ## Models
 
-Three model sizes available:
+Five model variants available, ordered from fastest to highest quality:
 
-| Model | Params | Quality |
-|-------|--------|---------|
-| `kitten-tts-nano-0.8` | 15M | Fastest |
+| Model | Params | Notes |
+|-------|--------|-------|
+| `kitten-tts-nano-0.8-int8` | 15M INT8 | **Default** — smallest & fastest |
+| `kitten-tts-nano-0.8` | 15M | Fast |
+| `kitten-tts-nano-0.8-fp32` | 15M FP32 | Highest precision nano |
 | `kitten-tts-micro-0.8` | 40M | Balanced |
 | `kitten-tts-mini-0.8` | 80M | Best quality |
 

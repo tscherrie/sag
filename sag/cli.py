@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import sys
-
 import click
 
 from sag import __version__
+from sag.config import AVAILABLE_MODELS, get_default, set_default
 
 DEFAULT_MODEL = "KittenML/kitten-tts-nano-0.8"
 DEFAULT_VOICE = "Bella"
@@ -20,11 +19,9 @@ class SagGroup(click.Group):
             return super().parse_args(ctx, args)
 
         # Otherwise, collect non-option trailing args as the text to speak
-        # We need to separate options from text arguments
         ctx.ensure_object(dict)
         ctx.obj["_text_args"] = []
 
-        # Find where the text starts (after all options and their values)
         parsed_args = []
         text_args = []
         i = 0
@@ -32,7 +29,6 @@ class SagGroup(click.Group):
             arg = args[i]
             if arg.startswith("-"):
                 parsed_args.append(arg)
-                # Check if this option takes a value
                 param = None
                 for p in self.params:
                     if isinstance(p, click.Option) and arg in p.opts:
@@ -51,12 +47,12 @@ class SagGroup(click.Group):
 
 
 @click.group(cls=SagGroup, invoke_without_command=True)
-@click.option("-v", "--voice", default=DEFAULT_VOICE, help="Voice name.", show_default=True)
+@click.option("-v", "--voice", default=None, help="Voice name (default from config or Bella).")
 @click.option("--speed", default=None, type=float, help="Speed multiplier (0.5-2.0).")
 @click.option("-r", "--rate", default=None, type=float, help="Words per minute (converted to speed).")
 @click.option("-o", "--output", default=None, type=click.Path(), help="Save audio to file instead of playing.")
 @click.option("--format", "fmt", default=None, type=click.Choice(["wav", "mp3"]), help="Output format (auto-detected from extension if omitted).")
-@click.option("--model", default=DEFAULT_MODEL, help="KittenTTS model ID.", show_default=True)
+@click.option("--model", default=None, help="KittenTTS model ID (default from config).")
 @click.version_option(__version__, prog_name="sag")
 @click.pass_context
 def main(ctx, voice, speed, rate, output, fmt, model):
@@ -65,7 +61,15 @@ def main(ctx, voice, speed, rate, output, fmt, model):
     Usage: sag "Hello world"
     """
     ctx.ensure_object(dict)
+
+    # Resolve defaults from config
+    if model is None:
+        model = get_default("model", DEFAULT_MODEL)
+    if voice is None:
+        voice = get_default("voice", DEFAULT_VOICE)
+
     ctx.obj["model"] = model
+    ctx.obj["voice"] = voice
 
     if ctx.invoked_subcommand is not None:
         return
@@ -101,10 +105,41 @@ def main(ctx, voice, speed, rate, output, fmt, model):
 
 
 @main.command()
+@click.option("--select", is_flag=True, help="Interactively set the default voice.")
 @click.pass_context
-def voices(ctx):
-    """List available voices."""
+def voices(ctx, select):
+    """List available voices or select a default."""
     from sag.voices import list_voices
 
-    model = ctx.obj.get("model", DEFAULT_MODEL)
-    list_voices(model)
+    model = ctx.obj.get("model", get_default("model", DEFAULT_MODEL))
+    list_voices(model, select=select)
+
+
+@main.command()
+@click.option("--select", is_flag=True, help="Interactively set the default model.")
+@click.pass_context
+def models(ctx, select):
+    """List available models or select a default."""
+    current = get_default("model", DEFAULT_MODEL)
+
+    click.echo("Available models:\n")
+    for i, model_id in enumerate(AVAILABLE_MODELS, 1):
+        size = {"nano": "15M params, fastest", "micro": "40M params, balanced", "mini": "80M params, best quality"}
+        label = next((v for k, v in size.items() if k in model_id), "")
+        marker = " *" if model_id == current else ""
+        click.echo(f"  {i}. {model_id} ({label}){marker}")
+
+    if not select:
+        click.echo(f"\nCurrent default: {current}")
+        click.echo("Use 'sag models --select' to change the default.")
+        return
+
+    click.echo()
+    choice = click.prompt("Select model number", type=int)
+    if 1 <= choice <= len(AVAILABLE_MODELS):
+        selected = AVAILABLE_MODELS[choice - 1]
+        set_default("model", selected)
+        click.echo(f"Default model set to: {selected}")
+    else:
+        click.echo("Invalid selection.", err=True)
+        raise SystemExit(1)

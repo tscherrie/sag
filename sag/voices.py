@@ -9,7 +9,8 @@ def list_voices(model_id: str, select: bool = False) -> None:
     from sag.config import get_default, set_default
 
     voices = sorted(available_voices(model_id))
-    current = get_default("voice", "Bella")
+    from sag.cli import DEFAULT_VOICE
+    current = get_default("voice", DEFAULT_VOICE)
 
     click.echo("Available voices:\n")
     for i, voice in enumerate(voices, 1):

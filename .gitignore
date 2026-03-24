@@ -1,24 +1,9 @@
-# Binaries
-/sag
-/say11
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-*.test
-
-# Build and module caches
-bin/
-build/
+# Build artifacts
+*.egg-info/
+__pycache__/
 dist/
-*.out
-*.log
-
-# Go vendor
-vendor/
-node_modules/
-pnpm-lock.yaml
+build/
+*.pyc
 
 # Editor/OS cruft
 .DS_Store

@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sag"
+version = "2.0.0"
+description = "Command-line text-to-speech tool using KittenTTS — like macOS say, but with neural voices"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+dependencies = [
+    "kittentts @ https://github.com/KittenML/KittenTTS/releases/download/0.8.1/kittentts-0.8.1-py3-none-any.whl",
+    "click>=8.0",
+    "numpy",
+    "sounddevice>=0.4",
+    "soundfile>=0.12",
+    "pydub>=0.25",
+]
+
+[project.scripts]
+sag = "sag.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/tscherrie/sag"

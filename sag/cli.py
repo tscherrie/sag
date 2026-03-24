@@ -124,7 +124,13 @@ def models(ctx, select):
 
     click.echo("Available models:\n")
     for i, model_id in enumerate(AVAILABLE_MODELS, 1):
-        size = {"nano": "15M params, fastest", "micro": "40M params, balanced", "mini": "80M params, best quality"}
+        size = {
+            "nano-0.8-int8": "15M params INT8, smallest & fastest",
+            "nano-0.8-fp32": "15M params FP32, highest precision nano",
+            "nano-0.8": "15M params, fast",
+            "micro": "40M params, balanced",
+            "mini": "80M params, best quality",
+        }
         label = next((v for k, v in size.items() if k in model_id), "")
         marker = " *" if model_id == current else ""
         click.echo(f"  {i}. {model_id} ({label}){marker}")

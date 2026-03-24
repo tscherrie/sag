@@ -7,7 +7,9 @@ CONFIG_DIR = Path.home() / ".config" / "sag"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
 AVAILABLE_MODELS = [
+    "KittenML/kitten-tts-nano-0.8-int8",
     "KittenML/kitten-tts-nano-0.8",
+    "KittenML/kitten-tts-nano-0.8-fp32",
     "KittenML/kitten-tts-micro-0.8",
     "KittenML/kitten-tts-mini-0.8",
 ]
